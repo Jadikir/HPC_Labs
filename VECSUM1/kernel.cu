@@ -18,16 +18,12 @@ __global__ void sum_reduction(float* input, float* output, int n) {
     extern __shared__ float cache[];
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     int cacheIndex = threadIdx.x;
-    float temp_sum = 0.0f;
-    while (tid < n) {
-        temp_sum += input[tid];
-        tid += blockDim.x * gridDim.x;
-    }
+    float temp_sum = (tid < n) ? input[tid] : 0.0f;
     cache[cacheIndex] = temp_sum;
     __syncthreads();
-    for (int i = blockDim.x / 2; i > 0; i /= 2) {
-        if (cacheIndex < i) {
-            cache[cacheIndex] += cache[cacheIndex + i];
+    for (int stride = blockDim.x / 2; stride > 0; stride /= 2) {
+        if (cacheIndex < stride) {
+            cache[cacheIndex] += cache[cacheIndex + stride];
         }
         __syncthreads();
     }
@@ -41,7 +37,6 @@ float sum_gpu_launcher(const std::vector<float>& vec) {
 
     float* d_input = nullptr;
     float* d_output = nullptr;
-    float h_output = 0.0f;
     int blockSize = 256;
     int numBlocks = (N + blockSize - 1) / blockSize;
     std::vector<float> partial_sums(numBlocks, 0.0f);
@@ -51,8 +46,15 @@ float sum_gpu_launcher(const std::vector<float>& vec) {
     auto start = std::chrono::high_resolution_clock::now();
     sum_reduction << <numBlocks, blockSize, blockSize * sizeof(float) >> > (d_input, d_output, N);
     cudaDeviceSynchronize();
-    cudaMemcpy(partial_sums.data(), d_output, numBlocks * sizeof(float), cudaMemcpyDeviceToHost);
-    h_output = std::accumulate(partial_sums.begin(), partial_sums.end(), 0.0f);
+    if (numBlocks > 1) {
+        int remainingBlocks = (numBlocks + blockSize - 1) / blockSize;
+        sum_reduction << <remainingBlocks, blockSize, blockSize * sizeof(float) >> > (d_output, d_output, numBlocks);
+        cudaDeviceSynchronize();
+        numBlocks = remainingBlocks;
+    }
+    float h_output = 0.0f;
+    cudaMemcpy(&h_output, d_output, sizeof(float), cudaMemcpyDeviceToHost);
+
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<float> duration = end - start;
     std::cout << "GPU: Summ = " << h_output << ", Time = " << duration.count() << " sec\n";
