@@ -4,10 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <chrono>
-#include <omp.h>  // Include OpenMP header
-
-// Размер матриц для примера
-const int N = 8192;  // Размер матрицы (N x N)
+const int N = 2000;
 
 // CUDA Kernel для перемножения матриц
 __global__ void matrixMulKernel(int* C, const int* A, const int* B, int width) {
@@ -39,13 +36,12 @@ void matrixMulCUDA(int* C, const int* A, const int* B, int width) {
     dim3 blocksPerGrid((width + threadsPerBlock.x - 1) / threadsPerBlock.x,
         (width + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-    matrixMulKernel << <blocksPerGrid, threadsPerBlock >> > (d_C, d_A, d_B, width);
+    matrixMulKernel <<<blocksPerGrid, threadsPerBlock >> > (d_C, d_A, d_B, width);
     cudaMemcpy(C, d_C, size, cudaMemcpyDeviceToHost);
-
     cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
 }
 
-// CPU version of matrix multiplication for verification
+
 void matrixMulCPU(int* C, const int* A, const int* B, int width) {
     for (int row = 0; row < width; ++row) {
         for (int col = 0; col < width; ++col) {
@@ -57,7 +53,7 @@ void matrixMulCPU(int* C, const int* A, const int* B, int width) {
     }
 }
 
-// Function to compare results
+
 bool compareMatrices(const int* A, const int* B, int width) {
     for (int i = 0; i < width * width; ++i) {
         if (A[i] != B[i]) {
@@ -67,7 +63,6 @@ bool compareMatrices(const int* A, const int* B, int width) {
     return true;
 }
 
-// Функция для измерения времени выполнения
 void measureTime(void(*func)(int*, const int*, const int*, int), int* C, const int* A, const int* B, int width, const char* description) {
     auto start = std::chrono::high_resolution_clock::now();
     func(C, A, B, width);
@@ -77,37 +72,25 @@ void measureTime(void(*func)(int*, const int*, const int*, int), int* C, const i
 }
 
 int main() {
-    // Инициализация матриц
     int* A = new int[N * N];
     int* B = new int[N * N];
     int* C = new int[N * N];
-    int* C_CPU = new int[N * N];  // Для хранения результата на CPU
-
-    // Заполнение матриц A и B случайными числами
+    int* C_CPU = new int[N * N];
     for (int i = 0; i < N * N; i++) {
         A[i] = rand() % 10;
         B[i] = rand() % 10;
     }
-
-    // Умножение матриц на GPU
     measureTime(matrixMulCUDA, C, A, B, N, "CUDA");
-
-    // Умножение матриц на CPU для проверки
     measureTime(matrixMulCPU, C_CPU, A, B, N, "CPU");
-
-    // Сравнение результатов
     if (compareMatrices(C, C_CPU, N)) {
         printf("Results are correct!\n");
     }
     else {
         printf("Results are incorrect!\n");
     }
-
-    // Очистка памяти
     delete[] A;
     delete[] B;
     delete[] C;
-    delete[] C_CPU;  // Освобождение памяти для CPU результата
-
+    delete[] C_CPU;
     return 0;
 }
