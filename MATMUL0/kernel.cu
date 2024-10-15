@@ -36,7 +36,7 @@ void matrixMulCUDA(int* C, const int* A, const int* B, int width) {
     dim3 blocksPerGrid((width + threadsPerBlock.x - 1) / threadsPerBlock.x,
         (width + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
-    matrixMulKernel <<<blocksPerGrid, threadsPerBlock >> > (d_C, d_A, d_B, width);
+    matrixMulKernel << <blocksPerGrid, threadsPerBlock >> > (d_C, d_A, d_B, width);
     cudaMemcpy(C, d_C, size, cudaMemcpyDeviceToHost);
     cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
 }

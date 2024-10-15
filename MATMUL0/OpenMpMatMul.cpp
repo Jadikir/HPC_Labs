@@ -61,13 +61,13 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
     matrixMulCPU(C_seq, A, B, N);
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration_seq = end - start; // Изменено на seconds
+    std::chrono::duration<double> duration_seq = end - start; 
     std::cout << "Sequential Matrix Multiplication Time: " << duration_seq.count() << " seconds" << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
     matrixMulCPUParallel(C_par, A, B, N);
     end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration_par = end - start; // Изменено на seconds
+    std::chrono::duration<double> duration_par = end - start;
     std::cout << "Parallel Matrix Multiplication Time: " << duration_par.count() << " seconds" << std::endl;
 
     if (compareMatrices(C_seq, C_par, N)) {
