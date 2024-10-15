@@ -70,6 +70,7 @@ int main() {
     for (int i = 0; i < N; ++i) {
         vec[i] = dis(gen);
     }
+    std::cout << N << "\n";
     float cpu_sum = sum_cpu(vec);
     float gpu_sum = sum_gpu_launcher(vec);
     float diff = std::abs(cpu_sum - gpu_sum);
